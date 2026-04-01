@@ -1,0 +1,10 @@
+[Unit]
+Description=Claude Buddy Patcher — re-patches after auto-updates
+
+[Service]
+ExecStart={patcher_script}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

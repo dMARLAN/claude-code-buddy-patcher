@@ -1,10 +1,13 @@
 """Companion types and constants — mirrors buddy/companion.ts exactly."""
 
+import platform
 import string
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 from typing import Final
+
+IS_MACOS: Final[bool] = platform.system() == "Darwin"
 
 
 class Rarity(StrEnum):
@@ -94,8 +97,15 @@ BINARY: Final[Path] = Path("~/.local/bin/claude").expanduser()
 OLD_SALT: Final[bytes] = b"friend-2026-401"
 CONFIG_DIR: Final[Path] = Path("~/.config/buddy-patcher").expanduser()
 SALT_FILE: Final[Path] = CONFIG_DIR / "salt"
-PLIST_LABEL: Final[str] = "com.user.claude-buddy-patcher"
-PLIST_PATH: Final[Path] = Path(f"~/Library/LaunchAgents/{PLIST_LABEL}.plist").expanduser()
 PATCHER_SCRIPT: Final[Path] = Path("~/bin/buddy-patcher-watch.py").expanduser()
 CLAUDE_CONFIG: Final[Path] = Path("~/.claude.json").expanduser()
 CHARSET: Final[str] = string.ascii_lowercase + string.digits
+
+# macOS LaunchAgent constants
+PLIST_LABEL: Final[str] = "com.user.claude-buddy-patcher"
+PLIST_PATH: Final[Path] = Path(f"~/Library/LaunchAgents/{PLIST_LABEL}.plist").expanduser()
+
+# Linux systemd constants
+SYSTEMD_USER_DIR: Final[Path] = Path("~/.config/systemd/user").expanduser()
+SYSTEMD_SERVICE: Final[str] = "claude-buddy-patcher.service"
+SYSTEMD_SERVICE_PATH: Final[Path] = SYSTEMD_USER_DIR / SYSTEMD_SERVICE

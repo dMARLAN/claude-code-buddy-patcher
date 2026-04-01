@@ -9,12 +9,16 @@ import typer
 from buddy_patcher.common import wipe_companion
 from buddy_patcher.types import (
     BINARY,
+    IS_MACOS,
     OLD_SALT,
     CONFIG_DIR,
     SALT_FILE,
     PLIST_LABEL,
     PLIST_PATH,
     PATCHER_SCRIPT,
+    SYSTEMD_SERVICE,
+    SYSTEMD_SERVICE_PATH,
+    SYSTEMD_USER_DIR,
 )
 
 
@@ -26,13 +30,10 @@ def _validate_salt(salt: str) -> None:
 
 def _check_deps() -> None:
     missing = []
-    if not shutil.which("fswatch"):
-        missing.append("fswatch")
     if not shutil.which("bun"):
-        missing.append("bun (oven-sh/bun/bun)")
+        missing.append("bun")
     if missing:
         typer.echo(f"Missing dependencies: {', '.join(missing)}")
-        typer.echo("Install with: arch -arm64 brew install " + " ".join(d.split()[0] for d in missing))
         raise typer.Exit(1)
 
 
@@ -76,8 +77,9 @@ def _patch_binary(salt: str, prev_salt: str | None = None) -> None:
 
     data = data.replace(target, new)
     BINARY.write_bytes(data)
-    subprocess.run(["codesign", "--force", "--sign", "-", BINARY], check=True)
-    typer.echo(f"Patched {count} occurrences and re-signed")
+    if IS_MACOS:
+        subprocess.run(["codesign", "--force", "--sign", "-", BINARY], check=True)
+    typer.echo(f"Patched {count} occurrence(s)" + (" and re-signed" if IS_MACOS else ""))
 
 
 def _install_watcher() -> None:
@@ -99,6 +101,16 @@ def _install_launchagent() -> None:
     typer.echo("LaunchAgent installed and loaded")
 
 
+def _install_systemd_service() -> None:
+    template = files("buddy_patcher.templates").joinpath("buddy-patcher.service").read_text()
+    service = template.format(patcher_script=PATCHER_SCRIPT)
+    SYSTEMD_USER_DIR.mkdir(parents=True, exist_ok=True)
+    SYSTEMD_SERVICE_PATH.write_text(service)
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+    subprocess.run(["systemctl", "--user", "enable", "--now", SYSTEMD_SERVICE], check=True)
+    typer.echo("systemd user service installed and started")
+
+
 def install(
     salt: str = typer.Argument(help="15-character salt from 'buddy-patcher find'"),
 ) -> None:
@@ -112,5 +124,8 @@ def install(
     _patch_binary(salt, prev_salt)
     wipe_companion()
     _install_watcher()
-    _install_launchagent()
+    if IS_MACOS:
+        _install_launchagent()
+    else:
+        _install_systemd_service()
     typer.echo("\nDone! Launch Claude and run /buddy to hatch your new companion.")

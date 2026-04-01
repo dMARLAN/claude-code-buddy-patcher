@@ -18,9 +18,9 @@ def _compile_wyhash() -> None:
         return
     if not _C_SRC.exists():
         raise FileNotFoundError(f"wyhash.c not found at {_C_SRC}")
-    # Target the same architecture as the running Python interpreter
-    arch = platform.machine()  # e.g. "arm64", "x86_64"
-    cmd = ["cc", "-O3", "-shared", "-fPIC", "-arch", arch, "-o", str(_LIB_PATH), str(_C_SRC)]
+    cmd = ["cc", "-O3", "-shared", "-fPIC", "-o", str(_LIB_PATH), str(_C_SRC)]
+    if platform.system() == "Darwin":
+        cmd[4:4] = ["-arch", platform.machine()]
     subprocess.check_call(cmd, stdout=sys.stderr, stderr=sys.stderr)
 
 
