@@ -1,0 +1,125 @@
+[project]
+name = "buddy-patcher"
+version = "0.1.0"
+description = "Choose your Claude Code /buddy companion"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.9.0",
+    "questionary>=2.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+buddy-patcher = "buddy_patcher.cli:app"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/buddy_patcher"]
+
+[dependency-groups]
+dev = [
+    "black>=26.3",
+    "pyright>=1.1",
+    "ruff>=0.15",
+]
+
+# Ruff configs
+# (most are the defaults from here: https://beta.ruff.rs/docs/configuration/#using-pyprojecttoml)
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    ".venv",
+    ".venv86",
+]
+
+# Same as Black.
+line-length = 120
+
+target-version = "py314"
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = [
+    "A",   # built-in shadowing
+    "ISC", # implicit/explicit string concatenation
+    "RET", # returns
+    "SIM", # simplify
+    "ARG", # unused args
+    "PTH", # use pathlib
+    "C90", # high complexity
+    "E",   # code style
+    "F",   # pyflakes
+    "PLE", # errors
+    "UP",    # pyupgrade
+    "UP042", # Use (StrEnum) instead of (str, Enum)
+    "UP007", # Use X | Y instead of Union[X, Y]
+    "UP045", # Use X | None instead of Optional[X]
+]
+ignore = [
+    "RET501", # unnecessary-return-none
+]
+preview = true
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["E", "F401"]
+unfixable = []
+
+per-file-ignores = {}
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Unlike Flake8, default to a complexity level of 10.
+mccabe.max-complexity = 10
+
+[tool.ruff.lint.flake8-builtins]
+builtins-ignorelist = ["id"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 120
+target-version = ['py314']
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = "."
+
+[tool.pyright]
+reportMatchNotExhaustive = "error"
+reportDeprecated = "error"
+include = ["src/api_v2/src", "src/python", "src/lambdas"]
+exclude = ["**/.uv-cache", "**/.uv_cache", "**/.venv", "**/node_modules", "**/dist", "experimental"]
