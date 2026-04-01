@@ -11,9 +11,7 @@ Choose your Claude Code `/buddy` companion.
 
 ```bash
 uv run buddy-patcher --help
-uv run buddy-patcher find --help
-uv run buddy-patcher install --help
-uv run buddy-patcher uninstall --help
+uv run buddy-patcher build
 ```
 
 ## How it works
