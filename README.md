@@ -2,6 +2,8 @@
 
 Choose your Claude Code `/buddy` companion.
 
+<img width="290" height="531" alt="image" src="https://github.com/user-attachments/assets/7dd26d1f-892d-4140-8313-54b26f7abf26" />
+
 ## Requirements
 
 - macOS or Linux
