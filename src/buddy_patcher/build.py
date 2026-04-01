@@ -17,7 +17,7 @@ from rich.panel import Panel
 from typer import Option
 
 from buddy_patcher.common import get_user_id
-from buddy_patcher.find import brute_force_search
+from buddy_patcher.find import brute_force_search, format_odds, format_odds_short
 from buddy_patcher.install import install as run_install
 from buddy_patcher.sprites import render_sprite
 from buddy_patcher.types import Companion, Eyes, Hat, Rarity, Species
@@ -136,7 +136,7 @@ def _live_select(
             fragments.append((style, f"{prefix}{opt}\n"))
         return FormattedText(fragments)
 
-    preview_window = Window(FormattedTextControl(_get_preview_text), height=8, dont_extend_height=True)
+    preview_window = Window(FormattedTextControl(_get_preview_text), height=10, dont_extend_height=True)
     layout = Layout(
         HSplit([
             Frame(preview_window, title="Your Companion"),
@@ -167,30 +167,60 @@ RICH_RARITY_STYLES: Final[dict[Rarity, str]] = {
 }
 
 
-def _pick_species() -> Species | None:
+def _odds_line(
+    species: Species | None = None,
+    eye: Eyes | None = None,
+    rarity: Rarity | None = None,
+    hat: Hat | None = None,
+    shiny: bool = False,
+    count: int = 5,
+) -> str:
+    """Build a short odds string from the current wizard state."""
+    return format_odds_short(
+        species=species.value if species else None,
+        eyes=eye.value if eye else None,
+        hat=hat.value if hat else None,
+        shiny=shiny,
+        rarity=rarity.value if rarity else None,
+        count=count,
+    )
+
+
+def _pick_species(count: int) -> Species | None:
     def preview(val: str) -> list[str]:
         sp = Species(val) if val != ANY_LABEL else None
-        return _preview_lines(species=sp)
+        lines = _preview_lines(species=sp)
+        lines.append("")
+        lines.append(_odds_line(species=sp, count=count))
+        return lines
 
     result = _live_select("Choose a species:", [s.value for s in Species], preview)
     return Species(result) if result else None
 
 
-def _pick_eyes(species: Species | None) -> Eyes | None:
+def _pick_eyes(species: Species | None, count: int) -> Eyes | None:
     display = {f"{e.value}  ({e.name.lower()})": e for e in Eyes}
 
     def preview(val: str) -> list[str]:
-        return _preview_lines(species=species, eye=display.get(val))
+        ey = display.get(val)
+        lines = _preview_lines(species=species, eye=ey)
+        lines.append("")
+        lines.append(_odds_line(species=species, eye=ey, count=count))
+        return lines
 
     result = _live_select("Choose eyes:", list(display.keys()), preview)
     return display[result] if result else None
 
 
-def _pick_rarity(species: Species | None, eye: Eyes | None) -> Rarity | None:
+def _pick_rarity(species: Species | None, eye: Eyes | None, count: int) -> Rarity | None:
     display = {f"{r.value}  ({_rarity_description(r)})": r for r in Rarity}
 
     def preview(val: str) -> list[str]:
-        return _preview_lines(species=species, eye=eye, rarity=display.get(val))
+        r = display.get(val)
+        lines = _preview_lines(species=species, eye=eye, rarity=r)
+        lines.append("")
+        lines.append(_odds_line(species=species, eye=eye, rarity=r, count=count))
+        return lines
 
     def color_for(val: str) -> str:
         r = display.get(val)
@@ -200,7 +230,7 @@ def _pick_rarity(species: Species | None, eye: Eyes | None) -> Rarity | None:
     return display[result] if result else None
 
 
-def _pick_hat(species: Species | None, eye: Eyes | None, rarity: Rarity | None) -> Hat | None:
+def _pick_hat(species: Species | None, eye: Eyes | None, rarity: Rarity | None, count: int) -> Hat | None:
     rarity_color = RARITY_COLORS.get(rarity, "") if rarity else ""
 
     if rarity == Rarity.COMMON:
@@ -208,20 +238,25 @@ def _pick_hat(species: Species | None, eye: Eyes | None, rarity: Rarity | None) 
 
     def preview(val: str) -> list[str]:
         h = Hat(val) if val != ANY_LABEL else None
-        return _preview_lines(species=species, eye=eye, rarity=rarity, hat=h)
+        lines = _preview_lines(species=species, eye=eye, rarity=rarity, hat=h)
+        lines.append("")
+        lines.append(_odds_line(species=species, eye=eye, rarity=rarity, hat=h, count=count))
+        return lines
 
     result = _live_select("Choose a hat:", [h.value for h in Hat], preview, color=rarity_color)
     return Hat(result) if result else None
 
 
-def _pick_shiny(species: Species | None, eye: Eyes | None, rarity: Rarity | None, hat: Hat | None) -> bool:
+def _pick_shiny(
+    species: Species | None, eye: Eyes | None, rarity: Rarity | None, hat: Hat | None, count: int,
+) -> bool:
     rarity_color = RARITY_COLORS.get(rarity, "") if rarity else ""
 
     def preview(val: str) -> list[str]:
-        s = True if val == "yes" else None
-        lines = _preview_lines(species=species, eye=eye, rarity=rarity, hat=hat, shiny=s)
+        s = val == "yes"
+        lines = _preview_lines(species=species, eye=eye, rarity=rarity, hat=hat, shiny=s or None)
         lines.append("")
-        lines.append("  (cosmetic only — shows on hatch card)")
+        lines.append(_odds_line(species=species, eye=eye, rarity=rarity, hat=hat, shiny=s, count=count))
         return lines
 
     result = _live_select("Require shiny?", ["yes", "no"], preview, color=rarity_color, include_any=False)
@@ -229,7 +264,8 @@ def _pick_shiny(species: Species | None, eye: Eyes | None, rarity: Rarity | None
 
 
 def _show_confirmation(
-    species: Species | None, eye: Eyes | None, rarity: Rarity | None, hat: Hat | None, shiny: bool
+    species: Species | None, eye: Eyes | None, rarity: Rarity | None, hat: Hat | None, shiny: bool,
+    count: int = 5,
 ) -> bool:
     """Show final build and ask for confirmation. Returns True to proceed."""
     console.clear()
@@ -237,6 +273,15 @@ def _show_confirmation(
     style = RICH_RARITY_STYLES.get(rarity, "") if rarity else ""
     panel_text = f"[{style}]{text}[/{style}]" if style else text
     console.print(Panel(panel_text, title="Your Companion", expand=False))
+    odds_str = format_odds(
+        species=species.value if species else None,
+        eyes=eye.value if eye else None,
+        hat=hat.value if hat else None,
+        shiny=shiny,
+        rarity=rarity.value if rarity else None,
+        count=count,
+    )
+    console.print(f"  [dim]{odds_str}[/dim]")
     console.print()
     return questionary.confirm("Start searching?", default=True).ask()
 
@@ -297,13 +342,13 @@ def build(
     uid = get_user_id()
 
     try:
-        species = _pick_species()
-        eye = _pick_eyes(species)
-        rarity = _pick_rarity(species, eye)
-        hat = _pick_hat(species, eye, rarity)
-        shiny = _pick_shiny(species, eye, rarity, hat)
+        species = _pick_species(count)
+        eye = _pick_eyes(species, count)
+        rarity = _pick_rarity(species, eye, count)
+        hat = _pick_hat(species, eye, rarity, count)
+        shiny = _pick_shiny(species, eye, rarity, hat, count)
 
-        if not _show_confirmation(species, eye, rarity, hat, shiny):
+        if not _show_confirmation(species, eye, rarity, hat, shiny, count=count):
             console.print("Cancelled.")
             return
 
